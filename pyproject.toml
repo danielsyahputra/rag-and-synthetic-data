@@ -11,6 +11,9 @@ python = "^3.10"
 openai = "^1.63.0"
 requests = "^2.32.3"
 python-dotenv = "^1.0.1"
+python-docx = "^1.1.2"
+docxtpl = "^0.19.1"
+docx2pdf = "^0.1.8"
 
 
 [build-system]
