@@ -172,3 +172,5 @@ cython_debug/
 .env
 !tmp/.gitkeep
 tmp/*.docx
+tmp/*.png
+tmp/*.pdf

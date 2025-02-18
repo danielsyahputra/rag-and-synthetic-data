@@ -142,17 +142,52 @@ class BookGenerator:
         document.add_page_break()
         chapter_num = 1
 
-        for chapter, subtopic in outline.items():
+        for chapter, subtopics in outline.items():
             document.add_heading(chapter, level=1)
+
+            intro_content = self.generate_chapter_content(
+                title, topic, target_audience, 0, chapter, "Introduction"
+            )
+            document.add_paragraph(intro_content)
+
+            try:
+                viz_path = self.generate_visualization(
+                    title, intro_content, chapter_num
+                )
+                document.add_picture(viz_path, width=Inches(6))
+                document.add_paragraph(
+                    "Figure " + str(chapter_num) + ": Chapter Overview Visualization"
+                )
+            except Exception as e:
+                print(
+                    f"Warning: Could not generate visualization for chapter {chapter_num}: {e}"
+                )
+
             subtopics_content = []
             for idx, subtopic in enumerate(subtopics):
                 if preview and idx >= 2:
                     break
+
                 document.add_heading(subtopic, level=2)
                 content = self.generate_chapter_content(
                     title, topic, target_audience, idx, chapter, subtopic
                 )
                 document.add_paragraph(content)
+
+                if len(content) > 300:
+                    try:
+                        viz_path = self.generate_visualization(
+                            title, content, f"{chapter_num}_{idx+1}"
+                        )
+                        document.add_picture(viz_path, width=Inches(5))
+                        document.add_paragraph(
+                            f"Figure {chapter_num}.{idx+1}: {subtopic} Visualization"
+                        )
+                    except Exception as e:
+                        print(
+                            f"Warning: Could not generate visualization for subtopic {subtopic}: {e}"
+                        )
+
                 subtopics_content.append(content)
 
             if preview:
@@ -164,6 +199,18 @@ class BookGenerator:
             if chapter_num < len(outline.items()):
                 document.add_page_break()
             chapter_num += 1
+
+            try:
+                import os
+
+                for file in os.listdir("tmp"):
+                    if file.startswith(f"chapter_{chapter_num}") and file.endswith(
+                        ".png"
+                    ):
+                        os.remove(os.path.join("tmp", file))
+            except Exception as e:
+                print(f"Warning: Could not clean up visualization files: {e}")
+
         document.save(docx_file)
 
     def generate_cover(
@@ -223,14 +270,43 @@ class BookGenerator:
         with open(img_output, "wb") as handler:
             handler.write(img_data)
 
+    def generate_visualization(self, title, content, chapter_num):
+        """
+        Generates a relevant visualization based on the chapter content.
+        Returns the image in PNG format.
+        """
+        convo_id = self.wrapper.start_convo(
+            "You are a data visualization expert with 20+ years of experience."
+        )
+
+        viz_prompt = (
+            f'Based on this chapter content about "{title}", create a prompt '
+            "for DALL-E to generate a relevant visualization. The content is: "
+            f'"{content[:500]}..." We need a business-appropriate, professional '
+            "diagram or illustration that would help explain the key concepts. "
+            "Focus on abstract representations, charts, or diagrams rather than "
+            "photographic images. Think in terms of business graphics, process "
+            "flows, or conceptual illustrations."
+        )
+
+        dalle_prompt = self.wrapper.msg_in_convo(convo_id, viz_prompt)
+        img_data = self.wrapper.generate_photo(dalle_prompt)
+
+        # Save the visualization
+        img_path = f"tmp/chapter_{chapter_num}_viz.png"
+        with open(img_path, "wb") as handler:
+            handler.write(img_data)
+
+        return img_path
+
 
 if __name__ == "__main__":
     generator = BookGenerator()
     topic = "impact of generative ai in industry"
-    title = generator.generate_title(topic=topic, target_audience="enterprise")
-    print("Title: ", title)
     target_audience = "c-level and high level manager"
-    num_chapters = 2
+    title = generator.generate_title(topic=topic, target_audience=target_audience)
+    print("Title: ", title)
+    num_chapters = 5
     num_subsections = 5
     outline = generator.generate_outline(
         topic=topic,
@@ -274,4 +350,3 @@ if __name__ == "__main__":
         output_file="tmp/book.pdf",
         preview="tmp/image.png",
     )
-
