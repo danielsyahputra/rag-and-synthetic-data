@@ -1,5 +1,6 @@
-import re
 import json
+import re
+
 from docx import Document
 from docx2pdf import convert
 from docx.shared import Inches, Mm
@@ -26,7 +27,7 @@ class BookGenerator:
         title = self.wrapper.msg_in_convo(convo_id, title_prompt)
         title = title.replace('"', "")
         return title
-    
+
     def verify_outline(self, outline, num_chapters, num_subsections):
         if len(outline.items()) != num_chapters:
             return False
@@ -38,16 +39,13 @@ class BookGenerator:
             if len(subtopics) != num_subsections:
                 return False
         return True
-    
+
     def generate_outline(
-        self,
-        topic,
-        target_audience,
-        title,
-        num_chapters,
-        num_subsections
+        self, topic, target_audience, title, num_chapters, num_subsections
     ):
-        convo_id = self.wrapper.start_convo("You are a book author with 20+ experience.")
+        convo_id = self.wrapper.start_convo(
+            "You are a book author with 20+ experience."
+        )
         outline_prompt = (
             f'We are writing an eBook called "{title}". It is about'
             f' "{topic}". Our reader is:  "{target_audience}".  Create'
@@ -70,17 +68,13 @@ class BookGenerator:
         if not self.verify_outline(outline, num_chapters, num_subsections):
             raise Exception("Outline not well formed!")
         return outline
-    
+
     def generate_chapter_content(
-        self,
-        title,
-        topic,
-        target_audience,
-        idx,
-        chapter,
-        subtopic
+        self, title, topic, target_audience, idx, chapter, subtopic
     ):
-        convo_id = self.wrapper.start_convo("You are a book author with 20+ experience.")
+        convo_id = self.wrapper.start_convo(
+            "You are a book author with 20+ experience."
+        )
         num_words_str = "500 to 700"
         content_prompt = (
             f'We are writing an eBook called "{title}". Overall, it is about'
@@ -103,27 +97,28 @@ class BookGenerator:
             " please adhere to it."
         )
         content = self.wrapper.msg_in_convo(convo_id, content_prompt)
+
         def remove_subtopic_from_content(content, subtopic, search_limit=200):
-            pattern = r'\d\.\d'
+            pattern = r"\d\.\d"
 
             match = re.search(pattern, content[:search_limit])
 
             if match:
-                newline_index = content.find('\n', match.end())
+                newline_index = content.find("\n", match.end())
 
                 if newline_index != -1:
-                    result_string = content[newline_index + 1:]
+                    result_string = content[newline_index + 1 :]
                     content = content.strip()
                     return result_string
             return content
-        
+
         try:
             content = content.strip()
             content = remove_subtopic_from_content(content, subtopic)
         except:
             pass
         return content
-    
+
     def generate_docs(
         self,
         topic,
@@ -133,20 +128,20 @@ class BookGenerator:
         docx_file,
         book_template,
         preview,
-        actionable_steps=False
+        actionable_steps=False,
     ):
         document = Document(book_template)
         document.add_page_break()
         document.add_heading("Table of Contents")
-        
+
         for chapter, subtopics in outline.items():
             document.add_heading(chapter, level=2)
             for idx, subtopic in enumerate(subtopics):
                 document.add_heading("\t" + subtopic, level=3)
-        
+
         document.add_page_break()
         chapter_num = 1
-        
+
         for chapter, subtopic in outline.items():
             document.add_heading(chapter, level=1)
             subtopics_content = []
@@ -159,44 +154,58 @@ class BookGenerator:
                 )
                 document.add_paragraph(content)
                 subtopics_content.append(content)
-            
+
             if preview:
                 document.add_heading(
                     "Preview Completed - Purchase Full Book To Read More!"
                 )
                 break
-            
+
             if chapter_num < len(outline.items()):
                 document.add_page_break()
             chapter_num += 1
         document.save(docx_file)
-        
+
     def generate_cover(
-        self,
-        cover_template,
-        title,
-        topic,
-        target_audience,
-        output_file,
-        preview
+        self, cover_template, title, topic, target_audience, output_file, preview
     ):
+        temp_docx = "tmp/temp_cover_intermediate.docx"
+        temp_photo = "tmp/preview_photo.png"
+
+        output_pdf = output_file.rsplit(".", 1)[0] + ".pdf"
+
         doc = DocxTemplate(cover_template)
+
         if preview:
-            self.cover_photo_location = "tmp/preview_photo.png"
+            image_path = preview
         else:
-            self.generate_cover_photo(
-                title, topic, target_audience, self.cover_photo_location
-            )
-        imagen = InlineImage(
-            doc, self.cover_photo_location, width=Mm(120)
-        )
-        context = {"title": title, "subtext": "DNL Publishing", "image": imagen}
-        doc.render(context)
-        doc.save(self.cover_photo_location)
-        convert(self.cover_photo_location, output_file)
-            
+            self.generate_cover_photo(title, topic, target_audience, temp_photo)
+            image_path = temp_photo
+
+        try:
+            imagen = InlineImage(doc, image_path, width=Mm(120))
+            context = {"title": title, "subtext": "DNL Publishing", "image": imagen}
+            doc.render(context)
+
+            doc.save(temp_docx)
+
+            convert(temp_docx, output_pdf)
+
+        finally:
+            import os
+
+            try:
+                if os.path.exists(temp_docx):
+                    os.remove(temp_docx)
+                if os.path.exists(temp_photo) and not preview:
+                    os.remove(temp_photo)
+            except Exception as e:
+                print(f"Warning: Could not clean up temporary files: {e}")
+
     def generate_cover_photo(self, title, topic, target_audience, img_output):
-        convo_id = self.wrapper.start_convo("You are a book author with 20+ experience.")
+        convo_id = self.wrapper.start_convo(
+            "You are a book author with 20+ experience."
+        )
         cover_prompt = (
             f'We have a ebook with the title {title}. It is about "{topic}".'
             f' Our reader is:  "{target_audience}". Write me a very brief and'
@@ -209,17 +218,16 @@ class BookGenerator:
         print(cover_prompt)
         dalle_prompt = self.wrapper.msg_in_convo(convo_id, cover_prompt)
         print(dalle_prompt)
-    
+
         img_data = self.wrapper.generate_photo(dalle_prompt)
         with open(img_output, "wb") as handler:
             handler.write(img_data)
 
+
 if __name__ == "__main__":
     generator = BookGenerator()
     topic = "impact of generative ai in industry"
-    title = generator.generate_title(
-        topic=topic, target_audience="enterprise"
-    )
+    title = generator.generate_title(topic=topic, target_audience="enterprise")
     print("Title: ", title)
     target_audience = "c-level and high level manager"
     num_chapters = 2
@@ -229,7 +237,7 @@ if __name__ == "__main__":
         target_audience=target_audience,
         title=title,
         num_chapters=num_chapters,
-        num_subsections=num_subsections
+        num_subsections=num_subsections,
     )
     sample_chapter, sample_subtopics = list(outline.items())[0]
     print("Outline: ", outline)
@@ -240,7 +248,7 @@ if __name__ == "__main__":
         target_audience=target_audience,
         idx=0,
         chapter=sample_chapter,
-        subtopic=subtopic
+        subtopic=subtopic,
     )
     # print(content)
     generator.generate_docs(
@@ -250,5 +258,20 @@ if __name__ == "__main__":
         outline=outline,
         docx_file="tmp/temp.docx",
         book_template=None,
-        preview=True
+        preview=False,
     )
+    generator.generate_cover_photo(
+        title=title,
+        topic=topic,
+        target_audience=target_audience,
+        img_output="tmp/image.png",
+    )
+    generator.generate_cover(
+        cover_template="tmp/temp.docx",
+        title=title,
+        topic=topic,
+        target_audience=target_audience,
+        output_file="tmp/book.pdf",
+        preview="tmp/image.png",
+    )
+
