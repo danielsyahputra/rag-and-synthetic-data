@@ -1,0 +1,3 @@
+[submodule "services/augmentoolkit"]
+	path = services/augmentoolkit
+	url = git@github.com:e-p-armstrong/augmentoolkit.git

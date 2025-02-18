@@ -1,6 +1,6 @@
 import json
 import re
-
+import time
 from docx import Document
 from docx2pdf import convert
 from docx.shared import Inches, Mm
@@ -22,7 +22,7 @@ class BookGenerator:
             f' reader is:  "{target_audience}". Write a short, catch'
             " title clearly directed at our reader that is less than"
             " 9 words and proposes a “big promise” that will be sure to grab"
-            " the readers attention."
+            " the readers attention. Please, give the title in Bahasa Indonesia."
         )
         title = self.wrapper.msg_in_convo(convo_id, title_prompt)
         title = title.replace('"', "")
@@ -58,7 +58,7 @@ class BookGenerator:
             ' prepended with the chapter number, like this: "Chapter 5:'
             ' [chapter title]". The subsection titles should be prepended'
             ' with the {chapter number.subtitle number}, like this: "5.4:'
-            ' [subsection title]". '
+            ' [subsection title]". Please, give the title in Bahasa Indonesia.'
         )
         outline_json = self.wrapper.msg_in_convo(convo_id, outline_prompt)
         outline_json = outline_json[
@@ -94,7 +94,7 @@ class BookGenerator:
             " auxillary information like  the word count, as the entire"
             " output will go directly into the ebook for readers, without any"
             " human procesing. Remember the {num_words_str} word minimum,"
-            " please adhere to it."
+            " please adhere to it. Please, give the title in Bahasa Indonesia."
         )
         content = self.wrapper.msg_in_convo(convo_id, content_prompt)
 
@@ -148,6 +148,7 @@ class BookGenerator:
             intro_content = self.generate_chapter_content(
                 title, topic, target_audience, 0, chapter, "Introduction"
             )
+            time.sleep(1)
             document.add_paragraph(intro_content)
 
             try:
@@ -172,6 +173,7 @@ class BookGenerator:
                 content = self.generate_chapter_content(
                     title, topic, target_audience, idx, chapter, subtopic
                 )
+                time.sleep(1)
                 document.add_paragraph(content)
 
                 if len(content) > 300:
@@ -227,6 +229,7 @@ class BookGenerator:
             image_path = preview
         else:
             self.generate_cover_photo(title, topic, target_audience, temp_photo)
+            time.sleep()
             image_path = temp_photo
 
         try:
@@ -306,7 +309,7 @@ if __name__ == "__main__":
     target_audience = "c-level and high level manager"
     title = generator.generate_title(topic=topic, target_audience=target_audience)
     print("Title: ", title)
-    num_chapters = 5
+    num_chapters = 1
     num_subsections = 5
     outline = generator.generate_outline(
         topic=topic,

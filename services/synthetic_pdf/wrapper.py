@@ -11,7 +11,7 @@ load_dotenv()
 class OpenAIWrapper:
     def __init__(self):
         self.api_key = os.environ.get("OPENAI_API_KEY")
-        self.models = ["gpt-4o", "gpt-3.5-turbo-1106"]
+        self.models = ["gpt-4o-mini", "gpt-3.5-turbo-1106"]
         self.model_index = 0
         self.model = self.models[self.model_index]
         self.client = openai.OpenAI()
@@ -24,6 +24,7 @@ class OpenAIWrapper:
                     result = func(self, *args, **kwargs)
                     return result
                 except Exception as e:
+                    print(f"Error with model {self.model}: {str(e)}")
                     print(f"Switching to the next model in {self.models}")
                     self.model_index += 1
                     self.model = self.models[self.model_index]
@@ -71,7 +72,7 @@ class OpenAIWrapper:
     def generate_photo(self, photo_prompt):
         improved_gpt_prompt = f"A positive image of: {photo_prompt}, rendered artistically in a chic, cartooney, minimalistic style"
         response = self.client.images.generate(
-            model="dall-e-3",
+            model="dall-e-2",
             prompt=improved_gpt_prompt,
             size="1024x1024",
             quality="standard",
