@@ -1,12 +1,43 @@
+import argparse
 import json
 import re
 import time
+
 from docx import Document
 from docx2pdf import convert
 from docx.shared import Inches, Mm
 from docxtpl import DocxTemplate, InlineImage
+from wrapper import OpenAIWrapper
 
-from .wrapper import OpenAIWrapper
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Book Generator")
+    parser.add_argument("--topic", type=str, required=True, help="Book topic")
+    parser.add_argument(
+        "--target-audience", type=str, required=True, help="Target audience"
+    )
+    parser.add_argument(
+        "--num-chapters", type=int, default=1, help="Number of chapters"
+    )
+    parser.add_argument(
+        "--num-subsections",
+        type=int,
+        default=5,
+        help="Number of subsections per chapter",
+    )
+    parser.add_argument(
+        "--output-docx", type=str, default="tmp/temp.docx", help="Output DOCX file path"
+    )
+    parser.add_argument(
+        "--output-pdf", type=str, default="tmp/book.pdf", help="Output PDF file path"
+    )
+    parser.add_argument("--book-template", type=str, help="Book template file path")
+    parser.add_argument("--cover-template", type=str, help="Cover template file path")
+    parser.add_argument(
+        "--preview", action="store_true", help="Generate preview version"
+    )
+    parser.add_argument("--preview-image", type=str, help="Preview image path")
+    return parser.parse_args()
 
 
 class BookGenerator:
@@ -18,12 +49,12 @@ class BookGenerator:
             system="You are a book author with 20+ experience."
         )
         title_prompt = (
-            f'We are writing an eBook. It is about "{topic}". Our'
-            f' reader is:  "{target_audience}". Write a short, catch'
-            " title clearly directed at our reader that is less than"
-            " 9 words and proposes a “big promise” that will be sure to grab"
-            " the readers attention. Please, give the title in Bahasa Indonesia."
+            f'Buat judul menarik untuk buku tentang "{topic}". '
+            f'Target pembaca: "{target_audience}". '
+            'Maksimal 9 kata, berikan "janji besar" yang memikat pembaca. '
+            "Berikan dalam Bahasa Indonesia."
         )
+
         title = self.wrapper.msg_in_convo(convo_id, title_prompt)
         title = title.replace('"', "")
         return title
@@ -47,19 +78,17 @@ class BookGenerator:
             "You are a book author with 20+ experience."
         )
         outline_prompt = (
-            f'We are writing an eBook called "{title}". It is about'
-            f' "{topic}". Our reader is:  "{target_audience}".  Create'
-            " a compehensive outline for our ebook, which will have"
-            f" {num_chapters} chapter(s). Each chapter should have exactly"
-            f" {num_subsections} subsection(s) Output Format for prompt:"
-            " python dict with key: chapter title, value: a single list/array"
-            " containing subsection titles within the chapter (the subtopics"
-            " should be inside the list). The chapter titles should be"
-            ' prepended with the chapter number, like this: "Chapter 5:'
-            ' [chapter title]". The subsection titles should be prepended'
-            ' with the {chapter number.subtitle number}, like this: "5.4:'
-            ' [subsection title]". Please, give the title in Bahasa Indonesia.'
+            f'Kami sedang menulis buku elektronik berjudul "{title}". Buku ini tentang '
+            f'"{topic}". Pembaca target kami adalah: "{target_audience}". Buatlah '
+            f"kerangka menyeluruh untuk buku ini yang akan memiliki {num_chapters} bab. "
+            f"Setiap bab harus memiliki tepat {num_subsections} subbab. Format output "
+            "untuk prompt: dictionary Python dengan key: judul bab, value: sebuah list/array "
+            "yang berisi judul-judul subbab dalam bab tersebut (subtopik harus berada "
+            'dalam list). Judul bab harus diawali dengan nomor bab, seperti ini: "Bab 5: '
+            '[judul bab]". Judul subbab harus diawali dengan {nomor bab.nomor subbab}, '
+            'seperti ini: "5.4: [judul subbab]". Berikan jawaban dalam Bahasa Indonesia.'
         )
+
         outline_json = self.wrapper.msg_in_convo(convo_id, outline_prompt)
         outline_json = outline_json[
             outline_json.find("{") : outline_json.rfind("}") + 1
@@ -77,25 +106,24 @@ class BookGenerator:
         )
         num_words_str = "500 to 700"
         content_prompt = (
-            f'We are writing an eBook called "{title}". Overall, it is about'
-            f' "{topic}". Our reader is:  "{target_audience}". We are'
-            f" currently writing the #{idx+1} section for the chapter:"
-            f' "{chapter}". Using at least {num_words_str} words, write the'
-            " full contents of the section regarding this subtopic:"
-            f' "{subtopic}". The output should be as helpful to the reader as'
-            " possible. Include quantitative facts and statistics, with"
-            " references. Go as in depth as necessary. You can split this"
-            " into multiple paragraphs if you see fit. The output should also"
-            ' be in cohesive paragraph form. Do not include any "[Insert'
-            ' ___]" parts that will require manual editing in the book later.'
-            " If find yourself needing to put 'insert [blank]' anywhere, do"
-            " not do it (this is very important). If you do not know"
-            " something, do not include it in the output. Exclude any"
-            " auxillary information like  the word count, as the entire"
-            " output will go directly into the ebook for readers, without any"
-            " human procesing. Remember the {num_words_str} word minimum,"
-            " please adhere to it. Please, give the title in Bahasa Indonesia."
+            f'Kami sedang menulis buku elektronik berjudul "{title}". '
+            f'Secara keseluruhan, buku ini tentang "{topic}". '
+            f'Pembaca target kami adalah: "{target_audience}". '
+            f'Kami sedang menulis bagian #{idx+1} untuk bab: "{chapter}". '
+            f'Gunakan minimal {num_words_str} kata untuk menulis konten lengkap mengenai subtopik: "{subtopic}". '
+            "Konten harus semaksimal mungkin membantu pembaca. "
+            "Sertakan fakta kuantitatif dan statistik, lengkap dengan referensi. "
+            "Jelaskan secara mendalam sesuai kebutuhan. "
+            "Anda bisa membaginya menjadi beberapa paragraf jika diperlukan. "
+            "Konten harus ditulis dalam bentuk paragraf yang padu. "
+            'Jangan menyertakan bagian "[Masukkan ___]" yang akan memerlukan pengeditan manual dalam buku nantinya. '
+            'Jika Anda merasa perlu menulis "masukkan [kosong]" di manapun, jangan lakukan itu (ini sangat penting). '
+            "Jika Anda tidak mengetahui sesuatu, jangan masukkan dalam konten. "
+            "Jangan sertakan informasi tambahan seperti jumlah kata, karena seluruh konten akan langsung masuk ke dalam buku elektronik untuk pembaca, tanpa proses editing manusia. "
+            f"Ingat minimum {num_words_str} kata, harap patuhi itu. "
+            "Berikan jawaban dalam Bahasa Indonesia."
         )
+
         content = self.wrapper.msg_in_convo(convo_id, content_prompt)
 
         def remove_subtopic_from_content(content, subtopic, search_limit=200):
@@ -229,7 +257,7 @@ class BookGenerator:
             image_path = preview
         else:
             self.generate_cover_photo(title, topic, target_audience, temp_photo)
-            time.sleep()
+            time.sleep(1)
             image_path = temp_photo
 
         try:
@@ -257,14 +285,14 @@ class BookGenerator:
             "You are a book author with 20+ experience."
         )
         cover_prompt = (
-            f'We have a ebook with the title {title}. It is about "{topic}".'
-            f' Our reader is:  "{target_audience}". Write me a very brief and'
-            " matter-of-fact description of a photo that would be on the"
-            " cover of the book. Do not reference the cover or photo in your"
-            ' answer. For example, if the title was "How to lose weight for'
-            ' middle aged women", a reasonable response would be "a middle'
-            ' age woman exercising"'
+            f'Kami memiliki buku elektronik berjudul {title}. Buku ini tentang "{topic}". '
+            f'Pembaca kami adalah: "{target_audience}". Tuliskan deskripsi singkat dan '
+            "lugas tentang foto yang akan digunakan pada sampul buku. Jangan menyebutkan "
+            "sampul atau foto dalam jawaban Anda. Contohnya, jika judulnya "
+            '"Cara Diet untuk Wanita Paruh Baya", jawaban yang tepat adalah '
+            '"wanita paruh baya sedang berolahraga"'
         )
+
         print(cover_prompt)
         dalle_prompt = self.wrapper.msg_in_convo(convo_id, cover_prompt)
         print(dalle_prompt)
@@ -281,15 +309,11 @@ class BookGenerator:
         convo_id = self.wrapper.start_convo(
             "You are a data visualization expert with 20+ years of experience."
         )
-
         viz_prompt = (
-            f'Based on this chapter content about "{title}", create a prompt '
-            "for DALL-E to generate a relevant visualization. The content is: "
-            f'"{content[:500]}..." We need a business-appropriate, professional '
-            "diagram or illustration that would help explain the key concepts. "
-            "Focus on abstract representations, charts, or diagrams rather than "
-            "photographic images. Think in terms of business graphics, process "
-            "flows, or conceptual illustrations."
+            f'Dari konten bab "{title}": "{content[:500]}..." '
+            "buat prompt DALL-E untuk ilustrasi profesional. "
+            "Fokus pada diagram bisnis, bagan alur, atau grafik konseptual, "
+            "bukan foto realistis."
         )
 
         dalle_prompt = self.wrapper.msg_in_convo(convo_id, viz_prompt)
@@ -304,52 +328,46 @@ class BookGenerator:
 
 
 if __name__ == "__main__":
+    args = parse_arguments()
     generator = BookGenerator()
-    topic = "impact of generative ai in industry"
-    target_audience = "c-level and high level manager"
-    title = generator.generate_title(topic=topic, target_audience=target_audience)
+
+    title = generator.generate_title(
+        topic=args.topic, target_audience=args.target_audience
+    )
     print("Title: ", title)
-    num_chapters = 1
-    num_subsections = 5
+
     outline = generator.generate_outline(
-        topic=topic,
-        target_audience=target_audience,
+        topic=args.topic,
+        target_audience=args.target_audience,
         title=title,
-        num_chapters=num_chapters,
-        num_subsections=num_subsections,
+        num_chapters=args.num_chapters,
+        num_subsections=args.num_subsections,
     )
-    sample_chapter, sample_subtopics = list(outline.items())[0]
     print("Outline: ", outline)
-    subtopic = sample_subtopics[0]
-    content = generator.generate_chapter_content(
-        title=title,
-        topic=topic,
-        target_audience=target_audience,
-        idx=0,
-        chapter=sample_chapter,
-        subtopic=subtopic,
-    )
-    # print(content)
+
     generator.generate_docs(
-        topic=topic,
-        target_audience=target_audience,
+        topic=args.topic,
+        target_audience=args.target_audience,
         title=title,
         outline=outline,
-        docx_file="tmp/temp.docx",
-        book_template=None,
-        preview=False,
+        docx_file=args.output_docx,
+        book_template=args.book_template,
+        preview=args.preview,
     )
+
+    cover_image_path = "tmp/image.png"
     generator.generate_cover_photo(
         title=title,
-        topic=topic,
-        target_audience=target_audience,
-        img_output="tmp/image.png",
+        topic=args.topic,
+        target_audience=args.target_audience,
+        img_output=cover_image_path,
     )
+
     generator.generate_cover(
-        cover_template="tmp/temp.docx",
+        cover_template=args.cover_template or args.output_docx,
         title=title,
-        topic=topic,
-        target_audience=target_audience,
-        output_file="tmp/book.pdf",
-        preview="tmp/image.png",
+        topic=args.topic,
+        target_audience=args.target_audience,
+        output_file=args.output_pdf,
+        preview=args.preview_image or cover_image_path,
     )

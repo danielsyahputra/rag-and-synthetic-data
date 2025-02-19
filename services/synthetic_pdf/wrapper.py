@@ -11,7 +11,7 @@ load_dotenv()
 class OpenAIWrapper:
     def __init__(self):
         self.api_key = os.environ.get("OPENAI_API_KEY")
-        self.models = ["gpt-4o-mini", "gpt-3.5-turbo-1106"]
+        self.models = ["gpt-4o", "gpt-3.5-turbo-1106"]
         self.model_index = 0
         self.model = self.models[self.model_index]
         self.client = openai.OpenAI()
@@ -74,7 +74,7 @@ class OpenAIWrapper:
         response = self.client.images.generate(
             model="dall-e-2",
             prompt=improved_gpt_prompt,
-            size="1024x1024",
+            size="512x512",
             quality="standard",
             n=1,
         )

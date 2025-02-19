@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "rag"
+version = "0.1.0"
+description = ""
+authors = ["danielsyahputra <dnlshp@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+langchain-community = "^0.3.17"
+flashrank = "^0.2.10"
+qdrant-client = "^1.13.2"
+pypdfium2 = "^4.30.1"
+fastembed = "^0.5.1"
+langchain-experimental = "^0.3.4"
+langchain-qdrant = "^0.2.0"
+streamlit = "^1.42.1"
+python-dotenv = "^1.0.1"
+langchain-groq = "^0.2.4"
+langchain = "^0.3.19"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
